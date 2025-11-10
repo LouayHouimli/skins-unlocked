@@ -1,0 +1,107 @@
+name: Build & Release (Windows installer)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create release for (e.g. v1.0.0)'
+        required: false
+
+jobs:
+  build-windows-and-release:
+    name: Build Windows installer and create GitHub release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npm run build:win
+
+      - name: Get package name & version
+        run: |
+          echo "NAME=$(node -p \"require('./package.json').name\")" >> $GITHUB_ENV
+          echo "VERSION=$(node -p \"require('./package.json').version\")" >> $GITHUB_ENV
+
+      - name: Find generated installer
+        id: find_installer
+        run: |
+          set -e
+          echo "Looking for installer in dist/"
+          ARTIFACT=$(bash -lc "ls dist/*-setup.* 2>/dev/null | head -n 1 || true")
+          if [ -z "$ARTIFACT" ]; then
+            echo "No installer found in dist/ - listing dist contents:" 
+            ls -la dist || true
+            exit 1
+          fi
+          echo "ARTIFACT=$ARTIFACT" >> $GITHUB_ENV
+          BASENAME=$(basename "$ARTIFACT")
+          echo "ARTIFACT_NAME=$BASENAME" >> $GITHUB_ENV
+          echo "Found installer: $ARTIFACT"
+
+      - name: Set release tag
+        id: set_tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
+          else
+            # If triggered by a push tag, extract it; otherwise default to v${VERSION}
+            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+            else
+              echo "TAG=v${VERSION}" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.TAG }}
+          release_name: ${{ env.TAG }}
+          draft: false
+          prerelease: false
+
+      - name: Upload installer to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.ARTIFACT }}
+          asset_name: ${{ env.ARTIFACT_NAME }}
+          asset_content_type: application/octet-stream
+
+      - name: Release metadata
+        run: |
+          echo "Release created for tag $TAG"
+          echo "Uploaded artifact: $ARTIFACT_NAME"
+
+# Notes:
+# - This workflow runs on a pushed tag matching v* (e.g. v1.0.0) or manually via workflow_dispatch.
+# - It builds only the Windows installer (NSIS) using `npm run build:win` as defined in package.json.
+# - The electron-builder configuration defines the NSIS artifact name as `${name}-${version}-setup.${ext}` and electron-builder
+#   outputs into the `dist/` directory by default; the workflow looks for `dist/*-setup.*` and uploads the first match.
+# - Assumptions: runner node 20 is compatible; `npm ci` is used (package-lock.json expected). If you use pnpm/yarn,
+#   change install steps accordingly.
