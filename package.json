@@ -27,7 +27,8 @@
     "electron-updater": "^6.6.2",
     "jszip": "^3.10.1",
     "node-fetch": "^2.7.0",
-    "sudo-prompt": "^9.2.1"
+    "sudo-prompt": "^9.2.1",
+    "electron-log": "^6.4.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
