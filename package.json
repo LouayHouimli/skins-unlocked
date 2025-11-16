@@ -1,6 +1,6 @@
 {
   "name": "league-skins",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "A Windows Skin-Changer for League of Legends based on lol-skins and cslol-manager.",
   "main": "./out/main/index.js",
   "author": "Louay",
