@@ -6,6 +6,7 @@
 
 import { dialog } from 'electron'
 import fs from 'fs-extra'
+import path from 'path'
 
 import { CONFIG_PATH } from './constants'
 
@@ -27,6 +28,14 @@ async function configExists(): Promise<boolean> {
  * @returns {Promise<string>} the value of the key.
  */
 export async function getConfigValue(key: string): Promise<string> {
+  // Ensure config file exists before reading
+  const exists = await fs.pathExists(CONFIG_PATH)
+  if (!exists) {
+    await fs.ensureDir(path.dirname(CONFIG_PATH))
+    await fs.writeFile(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2))
+    return DEFAULT_CONFIG[key]
+  }
+
   const config = JSON.parse(await fs.readFile(CONFIG_PATH, 'utf-8'))
   return config[key]
 }
@@ -37,7 +46,15 @@ export async function getConfigValue(key: string): Promise<string> {
  * @param value the value to set.
  */
 export async function setConfigValue(key: string, value: string): Promise<void> {
-  const config = JSON.parse(await fs.readFile(CONFIG_PATH, 'utf-8'))
+  // Ensure config file exists and directory exists
+  await fs.ensureDir(path.dirname(CONFIG_PATH))
+  const exists = await fs.pathExists(CONFIG_PATH)
+  let config
+  if (!exists) {
+    config = { ...DEFAULT_CONFIG }
+  } else {
+    config = JSON.parse(await fs.readFile(CONFIG_PATH, 'utf-8'))
+  }
   config[key] = value
   await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
 }
@@ -87,6 +104,10 @@ export async function isCurrentLeaguePathValid(): Promise<boolean> {
 }
 
 // Create the config file if it doesn't exist.
+// Create the config file if it doesn't exist (ensure directory exists first)
 configExists().then(async (exists) => {
-  if (!exists) await fs.writeFile(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2))
+  if (!exists) {
+    await fs.ensureDir(path.dirname(CONFIG_PATH))
+    await fs.writeFile(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2))
+  }
 })

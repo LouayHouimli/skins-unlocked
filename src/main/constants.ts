@@ -5,8 +5,13 @@
  */
 
 import { app } from 'electron'
+import path from 'path'
 
-const USER_DATA = app.getPath('userData')
+// Use Local AppData instead of roaming to avoid permission/roaming profile issues.
+// Electron's typed getPath may not expose 'localAppData', so read the env var and
+// fall back to `app.getPath('appData')` if it's not available.
+const localAppData = process.env.LOCALAPPDATA || app.getPath('appData')
+const USER_DATA = path.join(localAppData, 'league-skins')
 
 export const CONFIG_PATH = USER_DATA + '/config.json'
 

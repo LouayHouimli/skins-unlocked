@@ -42,6 +42,10 @@ export async function setSkin(skin: Skin | Chroma): Promise<void> {
   }
 
   console.log(`Setting skin ${skin.id} for champion ${skin.championId}`)
+  runningProcess = spawn(
+    `powershell -Command "Start-Process '${CSLOL_MANAGER_EXECUTABLE}' -Verb RunAs"`,
+    { shell: true }
+  )
 
   await promisifiedExec(
     `${CSLOL_MANAGER_EXECUTABLE} import "${skinPath}" "${skinsDirDestination}/skin" --game:"${gamePath}"`
