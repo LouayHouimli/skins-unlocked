@@ -93,6 +93,52 @@ jobs:
           asset_name: ${{ env.ARTIFACT_NAME }}
           asset_content_type: application/octet-stream
 
+      - name: Find latest.yml and blockmap
+        id: find_metadata
+        shell: pwsh
+        run: |
+          Write-Host "Looking for latest.yml and blockmap in dist/"
+          $latest = Get-ChildItem -Path dist/latest.yml -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($latest) {
+            $latestPath = $latest.FullName -replace '\\', '/'
+            echo "ARTIFACT_LATEST=$latestPath" >> $env:GITHUB_ENV
+            Write-Host "Found latest.yml: $latestPath"
+          } else {
+            Write-Host "No latest.yml found in dist/"
+          }
+
+          $blockmap = Get-ChildItem -Path dist/*.blockmap -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($blockmap) {
+            $blockmapPath = $blockmap.FullName -replace '\\', '/'
+            echo "ARTIFACT_BLOCKMAP=$blockmapPath" >> $env:GITHUB_ENV
+            echo "ARTIFACT_BLOCKMAP_NAME=$($blockmap.Name)" >> $env:GITHUB_ENV
+            Write-Host "Found blockmap: $blockmapPath"
+          } else {
+            Write-Host "No blockmap found in dist/"
+          }
+
+      - name: Upload latest.yml to release (if present)
+        if: env.ARTIFACT_LATEST != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.ARTIFACT_LATEST }}
+          asset_name: latest.yml
+          asset_content_type: application/octet-stream
+
+      - name: Upload blockmap to release (if present)
+        if: env.ARTIFACT_BLOCKMAP != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.ARTIFACT_BLOCKMAP }}
+          asset_name: ${{ env.ARTIFACT_BLOCKMAP_NAME }}
+          asset_content_type: application/octet-stream
+
       - name: Release metadata
         shell: pwsh
         run: |

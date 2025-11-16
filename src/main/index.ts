@@ -56,7 +56,7 @@ app.whenReady().then(() => {
   createWindow()
 
   // Auto-update setup (only in production builds)
-  if (is.dev) {
+  if (!is.dev) {
     ;(autoUpdater as any).logger = log
     try {
       const loggerAny = (autoUpdater as any).logger
