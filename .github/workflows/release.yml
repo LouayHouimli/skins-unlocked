@@ -14,6 +14,8 @@ jobs:
   build-windows-and-release:
     name: Build Windows installer and create GitHub release
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
